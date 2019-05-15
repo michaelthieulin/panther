@@ -34,7 +34,7 @@ final class ChromeManager implements BrowserManagerInterface
     {
         $this->options = array_merge($this->getDefaultOptions(), $options);
         $this->process = new Process([$chromeDriverBinary ?: $this->findChromeDriverBinary(), '--port='.$this->options['port']], null, null, null, null);
-        $this->arguments = $arguments ?? $this->getDefaultArguments();
+        $this->resolveArguments($arguments);
     }
 
     /**
@@ -81,6 +81,39 @@ final class ChromeManager implements BrowserManagerInterface
             default:
                 return __DIR__.'/../../chromedriver-bin/chromedriver_linux64';
         }
+    }
+
+    private function resolveArguments(?array $arguments): void
+    {
+        [$shortDefaultArguments, $longDefaultArguments] = $this->separateArguments($this->getDefaultArguments());
+
+        [$shortInputArguments, $longInputArguments] = $this->separateArguments($arguments);
+
+        $longArguments = array_replace($longDefaultArguments, $longInputArguments);
+
+        $this->arguments = array_merge($shortDefaultArguments, $shortInputArguments, array_map(function ($key ,$value) {
+            return $key . '=' . $value;
+        }, array_keys($longArguments), $longArguments));
+    }
+
+    private function separateArguments(?array $arguments): array
+    {
+        $shortArguments = $longArguments = [];
+
+        if (is_array($arguments)) {
+            foreach ($arguments as $argument) {
+                $splittedArgument = explode('=', $argument);
+
+                if (count($splittedArgument) === 2) {
+                    $longArguments[$splittedArgument[0]] = $splittedArgument[1];
+                } else {
+                    $shortArguments[] = $argument;
+                }
+            }
+
+        }
+
+        return [$shortArguments, $longArguments];
     }
 
     private function getDefaultArguments(): array
